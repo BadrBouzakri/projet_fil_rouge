@@ -1,0 +1,19 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: futsal-hpa-staging
+  namespace: futsal-staging
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: futsal-app-staging
+  minReplicas: 2  # Minimum 2 pods
+  maxReplicas: 10 # Maximum 10 pods
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70  # Déclenche l'autoscaling à 70% d'utilisation CPU

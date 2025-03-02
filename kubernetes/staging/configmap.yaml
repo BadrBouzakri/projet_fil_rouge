@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: futsal-config-staging
+  namespace: futsal-staging
+data:
+  FLASK_ENV: "production"
+  FLASK_DEBUG: "False"
+  SECRET_KEY: "staging-supersecretkey"  # En production, utilisez un Secret pour cela

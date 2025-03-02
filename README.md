@@ -1,4 +1,4 @@
-# Application de Gestion d'Équipes
+# Application de Gestion d'Équipes - CI/CD avec Jenkins et Kubernetes
 
 **Application créée par Badr**
 
@@ -8,11 +8,11 @@ Cette application permet de générer des équipes équilibrées à partir d'une
 
 1. [Fonctionnalités](#fonctionnalités)
 2. [Prérequis](#prérequis)
-3. [Installation avec Docker](#installation-avec-docker)
-4. [Exécution](#exécution)
-5. [Accès à l'administration](#accès-à-ladministration)
+3. [Installation locale avec Docker](#installation-locale-avec-docker)
+4. [Installation avec Kubernetes](#installation-avec-kubernetes)
+5. [Pipeline CI/CD avec Jenkins](#pipeline-cicd-avec-jenkins)
 6. [Structure des fichiers](#structure-des-fichiers)
-7. [API](#api)
+7. [Accès à l'application](#accès-à-lapplication)
 8. [Contributeurs](#contributeurs)
 
 ## Fonctionnalités
@@ -21,156 +21,153 @@ Cette application permet de générer des équipes équilibrées à partir d'une
 - Affichage dynamique des équipes générées.
 - Console d'administration pour ajouter et gérer des joueurs.
 - Authentification pour accéder à la console d'administration.
-- Texte de pied de page **"Application créée par Badr"** présent sur toutes les pages.
-- Affichage dynamique de l'année courante dans le pied de page.
+- Intégration continue avec Jenkins
+- Déploiement continu sur Kubernetes (environnements dev et staging)
 
 ## Prérequis
 
-- **Docker** : Vous aurez besoin de Docker pour exécuter l'application dans un conteneur.
+- **Docker** : Pour exécuter l'application dans un conteneur.
+- **Kubernetes** : Pour le déploiement dans des environnements dev et staging.
+- **Jenkins** : Pour l'intégration continue et le déploiement continu.
+- **kubectl** : Client en ligne de commande pour Kubernetes.
+- **Git** : Pour la gestion du code source.
 
-## Installation avec Docker
+## Installation locale avec Docker
 
-### Étape 1 : Cloner le projet
-
-Clonez ce dépôt Git sur votre machine locale :
+### Développement local avec Docker Compose
 
 ```bash
+# Cloner le projet
 git clone git@github.com:BadrBouzakri/futsal_team_selector.git
 cd futsal_team_selector
+
+# Démarrer l'application avec Docker Compose
+docker-compose up -d
+
+# Voir les logs
+docker-compose logs -f
 ```
 
-### Étape 2 : Construire l'image Docker
+L'application sera accessible à l'adresse http://localhost:5000.
 
-Construisez l'image Docker en utilisant le fichier **`Dockerfile`** fourni. Assurez-vous d'être dans le répertoire du projet.
+## Installation avec Kubernetes
+
+### Préparation
+
+1. Assurez-vous que votre cluster Kubernetes est opérationnel et que kubectl est correctement configuré.
+2. Créez les répertoires pour les volumes persistants :
 
 ```bash
-docker build -t application-equipes .
+# Sur tous les nœuds du cluster où les pods pourraient être programmés
+sudo mkdir -p /mnt/data/futsal-dev /mnt/data/futsal-staging
+sudo chmod 777 /mnt/data/futsal-dev /mnt/data/futsal-staging
 ```
 
-### Étape 3 : Lancer le conteneur
-
-Une fois l'image Docker construite, vous pouvez exécuter l'application à l'aide de Docker. Utilisez cette commande pour démarrer un conteneur à partir de l'image :
+### Déploiement dans l'environnement de développement
 
 ```bash
-docker run -d -p 5050:5050 --name app-equipes application-equipes
+# Créer le namespace et les ressources Kubernetes
+kubectl apply -f kubernetes/dev/namespace.yaml
+kubectl apply -f kubernetes/dev/persistent-volume.yaml
+kubectl apply -f kubernetes/dev/persistent-volume-claim.yaml
+kubectl apply -f kubernetes/dev/configmap.yaml
+kubectl apply -f kubernetes/dev/deployment.yaml
+kubectl apply -f kubernetes/dev/service.yaml
+
+# Vérifier le déploiement
+kubectl get all -n futsal-dev
 ```
 
-- `-d` exécute le conteneur en mode détaché (en arrière-plan).
-- `-p 5050:5050` mappe le port 5050 du conteneur au port 5050 de votre machine.
-- `--name app-equipes` nomme le conteneur pour une gestion plus facile.
-
-### Étape 4 : Accéder à l'application
-
-Une fois le conteneur en cours d'exécution, vous pouvez accéder à l'application via un navigateur en visitant :
-
-```
-http://localhost:5050
-```
-
-## Exécution (Docker)
-
-Pour vérifier si le conteneur est en cours d'exécution, utilisez la commande suivante :
+### Déploiement dans l'environnement de staging
 
 ```bash
-docker ps
+# Créer le namespace et les ressources Kubernetes
+kubectl apply -f kubernetes/staging/namespace.yaml
+kubectl apply -f kubernetes/staging/persistent-volume.yaml
+kubectl apply -f kubernetes/staging/persistent-volume-claim.yaml
+kubectl apply -f kubernetes/staging/configmap.yaml
+kubectl apply -f kubernetes/staging/deployment.yaml
+kubectl apply -f kubernetes/staging/service.yaml
+
+# Vérifier le déploiement
+kubectl get all -n futsal-staging
 ```
 
-Pour arrêter le conteneur :
+## Pipeline CI/CD avec Jenkins
+
+Ce projet utilise Jenkins pour l'intégration continue et le déploiement continu. Le pipeline est défini dans le fichier `Jenkinsfile`.
+
+### Configuration de Jenkins
+
+1. Installez Jenkins (avec Docker) :
 
 ```bash
-docker stop app-equipes
+docker run -d -p 8080:8080 -p 50000:50000 --name jenkins \
+  -v jenkins_home:/var/jenkins_home \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  jenkinsci/blueocean
 ```
 
-Pour relancer le conteneur :
+2. Récupérez le mot de passe initial :
 
 ```bash
-docker start app-equipes
+docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 ```
 
-Pour supprimer le conteneur :
+3. Accédez à http://localhost:8080 et suivez les instructions pour terminer l'installation.
 
-```bash
-docker rm -f app-equipes
-```
+4. Installez les plugins suivants :
+   - Docker Pipeline
+   - Kubernetes CLI
+   - Credentials Plugin
 
-## Accès à l'administration
+5. Configurez les identifiants Jenkins :
+   - Ajoutez votre fichier kubeconfig dans Jenkins (ID: `kubeconfig`)
+   - Configurez l'URL de votre registre Docker (ID: `docker-registry`)
 
-L'application dispose d'une console d'administration accessible via l'URL suivante :
+6. Créez un nouveau pipeline dans Jenkins :
+   - Sélectionnez "New Item"
+   - Choisissez "Pipeline"
+   - Dans la configuration, sélectionnez "Pipeline script from SCM"
+   - Spécifiez l'URL de votre dépôt Git et le chemin du Jenkinsfile
 
-```
-http://localhost:5050/admin
-```
+### Exécution du pipeline
 
-Les identifiants par défaut pour accéder à la console d'administration sont :
-
-- **Nom d'utilisateur** : `admin`
-- **Mot de passe** : `admin'
-
-Vous pouvez utiliser cette console pour ajouter de nouveaux joueurs et modifier leurs scores.
+Le pipeline Jenkins s'exécutera automatiquement à chaque push sur le dépôt Git. Il comprend :
+1. Checkout du code
+2. Construction de l'image Docker
+3. Tests
+4. Push de l'image vers le registre
+5. Déploiement en environnement dev
+6. Déploiement en environnement staging (avec validation manuelle)
 
 ## Structure des fichiers
 
-Voici la structure des fichiers principaux de l'application :
-
 ```
-.
-├── app.py                  # Fichier principal de l'application Flask
-├── templates/
-│   ├── base.html           # Modèle de base pour les pages
-│   ├── index.html          # Page d'accueil
-│   ├── teams.html          # Page des équipes générées
-│   ├── admin.html          # Page de connexion à l'administration
-│   └── admin_console.html  # Console d'administration pour ajouter des joueurs
-├── static/
-│   ├── css/                # Fichiers CSS (optionnel)
-│   └── js/                 # Fichiers JavaScript (optionnel)
-├── requirements.txt        # Liste des dépendances Python
-├── Dockerfile              # Pour créer une image Docker de l'application
-└── README.md               # Fichier que vous lisez actuellement
+futsal_team_selector/
+├── app/                         # Application Flask
+├── Dockerfile                   # Fichier de construction Docker
+├── docker-compose.yaml          # Configuration pour le développement local
+├── Jenkinsfile                  # Configuration du pipeline CI/CD
+├── kubernetes/                  # Configurations Kubernetes
+│   ├── dev/                     # Environnement de développement
+│   └── staging/                 # Environnement de staging
+└── README.md                    # Documentation du projet
 ```
 
-## Dockerfile
+## Accès à l'application
 
-Voici un aperçu du **Dockerfile** utilisé pour construire l'image Docker :
+### Via NodePort (accès direct)
+- **Environnement de développement** : http://[ADRESSE_IP_NODE]:30080
+- **Environnement de staging** : http://[ADRESSE_IP_NODE]:30081
 
-```Dockerfile
-# Utilisation de Python comme image de base
-FROM python:3.9-slim
+### Via Ingress (nom de domaine)
+- **Environnement de développement** : https://dev.foot.badr.cloud
+- **Environnement de staging** : https://foot.badr.cloud
 
-# Définir le répertoire de travail à /app
-WORKDIR /app
-
-# Copier les fichiers requirements.txt et installer les dépendances
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-# Copier tout le code source dans le conteneur
-COPY . .
-
-# Exposer le port 5050
-EXPOSE 5050
-
-# Définir la commande pour démarrer l'application
-CMD ["python", "app.py"]
-```
-
-## API
-
-### Routes principales
-
-1. **`/`** : Page d'accueil où vous pouvez sélectionner des joueurs pour générer des équipes.
-2. **`/teams`** : Affiche les équipes générées.
-3. **`/admin`** : Page de connexion pour accéder à la console d'administration.
-4. **`/admin/console`** : Console d'administration pour ajouter ou modifier des joueurs.
-
-### Exemples de routes API (pour une future extension)
-
-Vous pouvez envisager d'ajouter des routes API si vous souhaitez étendre l'application avec une fonctionnalité RESTful.
+### Administration
+- **Admin** : Ajoutez `/admin` à l'URL (identifiants: admin/admin)
 
 ## Contributeurs
 
 - **Badr** - Développeur principal de l'application.
-
----
-
-Ce **README** vous guide sur la façon de **construire** et **exécuter** l'application en utilisant Docker, ce qui simplifie l'installation et la gestion des dépendances. Si vous avez des modifications ou des améliorations à ajouter, vous pouvez facilement ajuster ce fichier.
