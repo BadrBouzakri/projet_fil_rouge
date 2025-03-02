@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console d'administration</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(to right, #00c6ff, #0072ff); /* Dégradé élégant */
+        }
+
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        form {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #0072ff;
+            box-shadow: 0 0 5px rgba(0, 114, 255, 0.5);
+        }
+
+        button {
+            background-color: #0072ff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #005ec1;
+        }
+
+        .players-list {
+            text-align: left;
+        }
+
+        .players-list h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .players-list ul {
+            list-style: none;
+            padding: 0;
+            font-size: 16px;
+        }
+
+        .players-list ul li {
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .players-list ul li:last-child {
+            border-bottom: none;
+        }
+
+        .logout-link {
+            margin-top: 20px;
+            display: inline-block;
+            color: #0072ff;
+            text-decoration: none;
+        }
+
+        .logout-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            form {
+                flex-direction: column;
+            }
+
+            input[type="text"], input[type="number"] {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ajouter un joueur</h1>
+
+        <form method="POST" action="/admin/console">
+            <input type="text" name="player_name" placeholder="Nom du joueur" required>
+            <input type="number" name="player_score" placeholder="Score (%)" required>
+            <button type="submit">Ajouter</button>
+        </form>
+
+        <div class="players-list">
+            <h2>Joueurs actuels</h2>
+            <ul>
+                {% for player, score in players.items() %}
+                <li>{{ player }} : {{ score }}%</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <a href="/admin/logout" class="logout-link">Se déconnecter</a>
+    </div>
+</body>
+</html>
