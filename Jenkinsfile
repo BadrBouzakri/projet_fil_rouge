@@ -8,7 +8,7 @@ pipeline {
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         DOCKER_FULL_IMAGE = "${DOCKER_IMAGE}:${DOCKER_TAG}"
         // Utiliser des credentials pour kubectl
-        KUBECONFIG = credentials('kubeconfig')
+        KUBECONFIG = credentials('config')
     }
 
     stages {
