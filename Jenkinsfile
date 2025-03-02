@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // Définir les variables d'environnement pour le pipeline
-        DOCKER_REGISTRY = "BadrBouzakri"
+        DOCKER_ID = "BadrBouzakri"
         DOCKER_IMAGE = 'futsal-team-selector'
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         DOCKER_FULL_IMAGE = "${DOCKER_IMAGE}:${DOCKER_TAG}"
@@ -35,13 +35,16 @@ pipeline {
             }
         }
 
-        stage('Push to Registry') {
+        stage('Docker Push') { 
+            environment {
+                DOCKER_PASS = credentials("docker-registry") // Récupération du mot de passe Docker Hub depuis les credentials Jenkins
+            }
             steps {
-                // Pousser l'image vers un registre Docker (local ou distant)
-                withCredentials([string(credentialsId: 'docker-registry', variable: 'DOCKER_REGISTRY')]) {
-                    sh "docker tag ${DOCKER_FULL_IMAGE} ${DOCKER_REGISTRY}/${DOCKER_FULL_IMAGE}"
-                    sh "docker push ${DOCKER_REGISTRY}/${DOCKER_FULL_IMAGE}"
-                    echo "Image poussée vers ${DOCKER_REGISTRY}/${DOCKER_FULL_IMAGE}"
+                script {
+                    sh '''
+                    docker login -u $DOCKER_ID -p $DOCKER_PASS
+                    docker push $DOCKER_ID/$DOCKER_FULL_IMAGE
+                    '''
                 }
             }
         }
