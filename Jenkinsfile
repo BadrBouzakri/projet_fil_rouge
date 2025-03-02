@@ -3,6 +3,7 @@ pipeline {
     
     environment {
         // Définir les variables d'environnement pour le pipeline
+        DOCKER_REGISTRY = "BadrBouzakri"
         DOCKER_IMAGE = 'futsal-team-selector'
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         DOCKER_FULL_IMAGE = "${DOCKER_IMAGE}:${DOCKER_TAG}"
