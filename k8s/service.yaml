@@ -9,7 +9,7 @@ spec:
     - protocol: TCP
       port: 80       # Traefik redirige vers ce port depuis HTTPS
       targetPort: 5000   # Port où votre app écoute à l'intérieur du pod
-      nodePort: 30500
+      # nodePort: 30500
   type: NodePort
 
   
