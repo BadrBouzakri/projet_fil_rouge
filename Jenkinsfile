@@ -129,6 +129,7 @@ pipeline {
                         kubectl apply -f k8s/service.yaml -n prod
                         kubectl apply -f k8s/pv.yaml -n prod
                         kubectl apply -f k8s/pvc.yaml -n prod
+                        kubectl apply -f k8s/hpa.yaml -n prod
                         '''
                     } else {
                         echo "Déploiement en production annulé par l'utilisateur."
