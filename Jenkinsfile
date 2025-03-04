@@ -1,104 +1,139 @@
 pipeline {
-    agent any
-
-    environment {
-        // Définir les variables d'environnement pour le pipeline
-        DOCKER_ID = "BadrBouzakri"
-        DOCKER_IMAGE = 'futsal-team-selector'
-        DOCKER_TAG = "${env.BUILD_NUMBER}"
-        DOCKER_FULL_IMAGE = "${DOCKER_IMAGE}:${DOCKER_TAG}"
-        // Utiliser des credentials pour kubectl
-        KUBECONFIG = credentials('config')
+    environment { 
+        // Déclaration des variables d'environnement globales
+        DOCKER_ID = "bouzakri" 
+        DOCKER_IMAGE = "foot_app"
+        DOCKER_TAG = "v.${BUILD_ID}.0" // Tag des images avec l'ID de build pour l'incrémentation automatique
     }
+    agent any // Jenkins peut sélectionner n'importe quel agent disponible
 
     stages {
-        stage('Checkout') {
-            steps {
-                // Récupérer le code source
-                checkout scm
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                // Construire l'image Docker
-                sh "docker build -t ${DOCKER_FULL_IMAGE} ."
-                echo "Image Docker construite: ${DOCKER_FULL_IMAGE}"
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                // Ici, vous pourriez ajouter des tests unitaires si nécessaire
-                echo "Exécution des tests..."
-                // Exemple: sh "docker run --rm ${DOCKER_FULL_IMAGE} python -m pytest"
-            }
-        }
-
-        stage('Docker Push') { 
-            environment {
-                DOCKER_PASS = credentials("docker-registry") // Récupération du mot de passe Docker Hub depuis les credentials Jenkins
-            }
+        stage('Docker Build') { 
             steps {
                 script {
                     sh '''
-                    docker login -u $DOCKER_ID -p $DOCKER_PASS
-                    docker push $DOCKER_ID/$DOCKER_FULL_IMAGE
+                    docker rm -f jenkins || true
+                    docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG .
+                    sleep 6
                     '''
                 }
             }
         }
 
-        stage('Deploy to Dev') {
+        stage('Docker Run') { 
             steps {
-                // Mettre à jour l'image dans le fichier de déploiement
-                sh "sed -i 's|image:.*|image: ${DOCKER_REGISTRY}/${DOCKER_FULL_IMAGE}|' kubernetes/dev/deployment.yaml"
-
-                // Déployer sur l'environnement de développement
-                sh "kubectl apply -f kubernetes/dev/namespace.yaml"
-                sh "kubectl apply -f kubernetes/dev/persistent-volume.yaml"
-                sh "kubectl apply -f kubernetes/dev/persistent-volume-claim.yaml"
-                sh "kubectl apply -f kubernetes/dev/configmap.yaml"
-                sh "kubectl apply -f kubernetes/dev/deployment.yaml"
-                sh "kubectl apply -f kubernetes/dev/service.yaml"
-                sh "kubectl apply -f kubernetes/dev/horizontal-pod-autoscaler.yaml"
-
-                echo "Déploiement sur l'environnement dev terminé!"
+                script {
+                    sh '''
+                    docker run -d -p 5000:5000 --name jenkins $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
+                    sleep 10
+                    '''
+                }
             }
         }
 
-        stage('Deploy to Staging') {
-            when {
-                // Déployer sur staging uniquement depuis la branche main
-                branch 'main'
+        stage('Test Acceptance') { 
+            steps {
+                script {
+                    sh '''
+                    echo "Attente du démarrage de l'application sur localhost:4545..."
+                    until curl -s localhost:6000 > /dev/null; do
+                      echo "L'application n'est pas encore prête. Nouvelle tentative dans 5 secondes..."
+                      sleep 5
+                    done
+                    # Vérification avec curl
+                    curl localhost:6000
+                    '''
+                }
+            }
+        }
+
+        stage('Docker Push') { 
+            environment {
+                DOCKER_PASS = credentials("DOCKER_HUB_PASS") // Récupération du mot de passe Docker Hub depuis les credentials Jenkins
             }
             steps {
-                // Attendre la validation manuelle avant de déployer en staging
-                input message: 'Déployer en environnement de staging?', ok: 'Déployer'
+                script {
+                    sh '''
+                    docker login -u $DOCKER_ID -p $DOCKER_PASS
+                    docker push $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
+                    '''
+                }
+            }
+        }
 
-                // Mettre à jour l'image dans le fichier de déploiement
-                sh "sed -i 's|image:.*|image: ${DOCKER_REGISTRY}/${DOCKER_FULL_IMAGE}|' kubernetes/staging/deployment.yaml"
+        // Étape pour mettre à jour les fichiers YAML avant chaque déploiement
+        stage('Update Kubernetes YAML Files') {
+            steps {
+                script {
+                    // Mise à jour des fichiers YAML pour utiliser les nouveaux tags Docker
+                    sh '''
+                    sed -i "s+image:.*+image: $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG+g" k8s/deployment.yaml
+                    '''
+                }
+            }
+        }
 
-                // Déployer sur l'environnement de staging
-                sh "kubectl apply -f kubernetes/staging/namespace.yaml"
-                sh "kubectl apply -f kubernetes/staging/persistent-volume.yaml"
-                sh "kubectl apply -f kubernetes/staging/persistent-volume-claim.yaml"
-                sh "kubectl apply -f kubernetes/staging/configmap.yaml"
-                sh "kubectl apply -f kubernetes/staging/deployment.yaml"
-                sh "kubectl apply -f kubernetes/staging/service.yaml"
-                sh "kubectl apply -f kubernetes/staging/horizontal-pod-autoscaler.yaml"
+        stage('Deploiement en dev') {
+            environment {
+                KUBECONFIG = credentials("config") // Récupération de kubeconfig depuis les credentials Jenkins
+            }
+            steps {
+                script {
+                    sh '''
+                    kubectl apply -f k8s/deployment.yaml -n dev
+                    kubectl apply -f k8s/service.yaml -n dev
+                    kubectl apply -f k8s/pv.yaml -n dev
+                    kubectl apply -f k8s/pvc.yaml -n dev
+                    '''
+                }
+            }
+        }
 
-                echo "Déploiement sur l'environnement staging terminé!"
+        stage('Deploiement en staging') {
+            environment {
+                KUBECONFIG = credentials("config")
+            }
+            steps {
+                script {
+                    sh '''
+                    kubectl apply -f k8s/deployment.yaml -n staging
+                    kubectl apply -f k8s/service.yaml -n staging
+                    kubectl apply -f k8s/pv.yaml -n staging
+                    kubectl apply -f k8s/pvc.yaml -n staging
+                    '''
+                }
+            }
+        }
+
+        stage('Deploiement en prod') {
+            environment {
+                KUBECONFIG = credentials("config")
+            }
+            steps {
+                script {
+                    // Créer un bouton d'approbation avec un délai d'expiration de 15 minutes
+                    def userInput = input(
+                        id: 'userInput', message: 'Do you want to deploy in production?', ok: 'Yes',
+                        parameters: [
+                            choice(name: 'Approval', choices: ['Yes', 'No'], description: 'Select Yes to proceed')
+                        ]
+                    )
+
+                    // Vérification de l'approbation de l'utilisateur pour le déploiement en production
+                    if (userInput == 'Yes') {
+                        echo "Déploiement en production approuvé, exécution du déploiement..."
+                        sh '''
+                        kubectl apply -f k8s/deployment.yaml -n prod
+                        kubectl apply -f k8s/service.yaml -n prod
+                        kubectl apply -f k8s/ingress.yaml -n prod
+                        kubectl apply -f k8s/pv.yaml -n prod
+                        kubectl apply -f k8s/pvc.yaml -n prod
+                        '''
+                    } else {
+                        echo "Déploiement en production annulé par l'utilisateur."
+                    }
+                }
             }
         }
     }
-
-    post {
-        success {
-            echo "Pipeline terminé avec succès!"
-        }
-        failure {
-            echo "Échec du pipeline. Vérifiez les logs pour plus d'informations."
-        }
-    }  
-}  
+}

@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: futsal-config-dev
-  namespace: futsal-dev
-data:
-  FLASK_ENV: "development"
-  FLASK_DEBUG: "True"
-  SECRET_KEY: "dev-supersecretkey"  # En production, utilisez un Secret pour cela
