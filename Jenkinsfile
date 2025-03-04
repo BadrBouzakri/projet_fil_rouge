@@ -35,7 +35,7 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    echo "Attente du démarrage de l'application sur localhost:4545..."
+                    echo "Attente du démarrage de l'application sur localhost:5000..."
                     until curl -s localhost:5000 > /dev/null; do
                       echo "L'application n'est pas encore prête. Nouvelle tentative dans 5 secondes..."
                       sleep 5
