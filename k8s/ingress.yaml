@@ -23,7 +23,7 @@ spec:
               service:
                 name: foot-app-service
                 port:
-                  number: 6000
+                  number: 5000
   tls:
     - hosts:
         - foot.badr.cloud
