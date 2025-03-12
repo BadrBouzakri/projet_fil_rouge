@@ -8,7 +8,7 @@ metadata:
     nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   rules:
-  - host: foot.local  # Vous pouvez ajouter cette entrée dans votre fichier /etc/hosts
+  - host: foot.badr.clous
     http:
       paths:
       - path: /
