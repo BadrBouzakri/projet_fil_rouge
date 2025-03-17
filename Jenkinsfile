@@ -111,14 +111,23 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        # Nettoyer d'abord
+                        rm -rf k8s-repo ~/.ssh/id_rsa
+
                         # Configure Git SSH
                         mkdir -p ~/.ssh
                         echo "$GIT_SSH_KEY" > ~/.ssh/id_rsa
                         chmod 600 ~/.ssh/id_rsa
                         ssh-keyscan github.com >> ~/.ssh/known_hosts
+                        
+                        # Test SSH connection
+                        ssh -T -o StrictHostKeyChecking=no git@github.com || true
 
                         # Clone the repository
                         git clone $GITHUB_REPO_URL k8s-repo || true
+
+                        # Ensure directory exists
+                        mkdir -p k8s-repo
                         
                         # Copy the updated manifests
                         cp k8s/*.yaml k8s-repo/
