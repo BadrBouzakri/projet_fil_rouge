@@ -1,11 +1,11 @@
 pipeline {
     environment { 
-        // Déclaration des variables d'environnement globales
         DOCKER_ID = "bouzakri" 
         DOCKER_IMAGE = "foot_app"
-        DOCKER_TAG = "v.${BUILD_ID}.0" // Tag des images avec l'ID de build pour l'incrémentation automatique
+        DOCKER_TAG = "v.${BUILD_ID}.0"
+        GITHUB_REPO_URL = "git@github.com:bouzakri/k8s-projet-prod.git"
     }
-    agent any // Jenkins peut sélectionner n'importe quel agent disponible
+    agent any 
 
     stages {
         stage('Docker Build') { 
@@ -40,7 +40,6 @@ pipeline {
                       echo "L'application n'est pas encore prête. Nouvelle tentative dans 5 secondes..."
                       sleep 5
                     done
-                    # Vérification avec curl
                     curl localhost:5000
                     '''
                 }
@@ -49,7 +48,7 @@ pipeline {
 
         stage('Docker Push') { 
             environment {
-                DOCKER_PASS = credentials("DOCKER_HUB_PASS") // Récupération du mot de passe Docker Hub depuis les credentials Jenkins
+                DOCKER_PASS = credentials("DOCKER_HUB_PASS")
             }
             steps {
                 script {
@@ -61,11 +60,9 @@ pipeline {
             }
         }
 
-        // Étape pour mettre à jour les fichiers YAML avant chaque déploiement
         stage('Update Kubernetes YAML Files') {
             steps {
                 script {
-                    // Mise à jour des fichiers YAML pour utiliser les nouveaux tags Docker
                     sh '''
                     sed -i "s+image:.*+image: $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG+g" k8s/deployment.yaml
                     '''
@@ -75,7 +72,7 @@ pipeline {
 
         stage('Deploiement en dev') {
             environment {
-                KUBECONFIG = credentials("config") // Récupération de kubeconfig depuis les credentials Jenkins
+                KUBECONFIG = credentials("config")
             }
             steps {
                 script {
@@ -107,35 +104,44 @@ pipeline {
             }
         }
 
-        stage('Deploiement en prod') {
+        stage('Push Kubernetes Manifests to Git') {
             environment {
-                KUBECONFIG = credentials("config")
+                GIT_SSH_KEY = credentials('github-ssh-key')
             }
             steps {
                 script {
-                    // Créer un bouton d'approbation avec un délai d'expiration de 15 minutes
-                    def userInput = input(
-                        id: 'userInput', message: 'Do you want to deploy in production?', ok: 'Yes',
-                        parameters: [
-                            choice(name: 'Approval', choices: ['Yes', 'No'], description: 'Select Yes to proceed')
-                        ]
-                    )
+                    sh '''
+                        # Configure Git SSH
+                        mkdir -p ~/.ssh
+                        echo "$GIT_SSH_KEY" > ~/.ssh/id_rsa
+                        chmod 600 ~/.ssh/id_rsa
+                        ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-                    // Vérification de l'approbation de l'utilisateur pour le déploiement en production
-                    if (userInput == 'Yes') {
-                        echo "Déploiement en production approuvé, exécution du déploiement..."
-                        sh '''
-                        kubectl apply -f k8s/deployment.yaml -n prod
-                        kubectl apply -f k8s/service.yaml -n prod
-                        kubectl apply -f k8s/pv.yaml -n prod
-                        kubectl apply -f k8s/pvc.yaml -n prod
-                        kubectl apply -f k8s/hpa.yaml -n prod
-                        '''
-                    } else {
-                        echo "Déploiement en production annulé par l'utilisateur."
-                    }
+                        # Clone the repository
+                        git clone $GITHUB_REPO_URL k8s-repo || true
+                        
+                        # Copy the updated manifests
+                        cp k8s/*.yaml k8s-repo/
+                        
+                        # Commit and push
+                        cd k8s-repo
+                        git config --global user.email "jenkins@example.com"
+                        git config --global user.name "Jenkins"
+                        git add .
+                        git commit -m "Update kubernetes manifests for version $DOCKER_TAG" || true
+                        git push origin main
+                        
+                        # Cleanup
+                        rm -f ~/.ssh/id_rsa
+                    '''
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker rm -f jenkins || true'
         }
     }
 }
