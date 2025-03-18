@@ -1,42 +1,25 @@
 pipeline {
     environment { 
-        // Informations Docker
         DOCKER_ID = "bouzakri" 
         DOCKER_IMAGE = "foot_app"
         DOCKER_TAG = "v.${BUILD_ID}.0"
-        
-        // Informations GitHub
         GITHUB_REPO_OWNER = "BadrBouzakri"
         GITHUB_REPO_NAME = "k8s-projet-prod"
-        GITHUB_BRANCH = "main"
     }
     
     agent any 
     
     options {
-        // Nettoyer l'espace de travail avant de commencer
-        skipDefaultCheckout(false)
-        // Garder les derniers builds
         buildDiscarder(logRotator(numToKeepStr: '5'))
-        // Timeout global du pipeline
         timeout(time: 30, unit: 'MINUTES')
     }
 
     stages {
-        stage('Préparation') {
-            steps {
-                // Nettoyage des conteneurs existants
-                sh 'docker rm -f jenkins || true'
-                
-                // Affiche les informations du build
-                echo "Construction de l'image: ${DOCKER_ID}/${DOCKER_IMAGE}:${DOCKER_TAG}"
-            }
-        }
-
-        stage('Construction') { 
+        stage('Docker Build') { 
             steps {
                 script {
                     sh '''
+                    docker rm -f jenkins || true
                     docker build -t $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG .
                     sleep 6
                     '''
@@ -44,7 +27,7 @@ pipeline {
             }
         }
 
-        stage('Déploiement local') { 
+        stage('Docker Run') { 
             steps {
                 script {
                     sh '''
@@ -55,7 +38,7 @@ pipeline {
             }
         }
 
-        stage('Tests') { 
+        stage('Test Acceptance') { 
             steps {
                 script {
                     sh '''
@@ -74,21 +57,19 @@ pipeline {
                       elapsed=$((elapsed+5))
                     done
                     
-                    echo "Application démarrée avec succès!"
-                    curl -s localhost:5000
+                    curl localhost:5000
                     '''
                 }
             }
         }
 
-        stage('Publication de l\'image') { 
+        stage('Docker Push') { 
             environment {
                 DOCKER_PASS = credentials("DOCKER_HUB_PASS")
             }
             steps {
                 script {
                     sh '''
-                    echo "Publication de l'image Docker vers Docker Hub..."
                     docker login -u $DOCKER_ID -p $DOCKER_PASS
                     docker push $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG
                     '''
@@ -96,18 +77,17 @@ pipeline {
             }
         }
 
-        stage('Mise à jour des manifestes K8s') {
+        stage('Update Kubernetes YAML Files') {
             steps {
                 script {
                     sh '''
-                    echo "Mise à jour des fichiers de déploiement Kubernetes..."
                     sed -i "s+image:.*+image: $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG+g" k8s/deployment.yaml
                     '''
                 }
             }
         }
 
-        stage('Déploiement en DEV') {
+        stage('Deploiement en dev') {
             environment {
                 KUBECONFIG = credentials("config")
             }
@@ -124,7 +104,7 @@ pipeline {
             }
         }
 
-        stage('Déploiement en STAGING') {
+        stage('Deploiement en staging') {
             environment {
                 KUBECONFIG = credentials("config")
             }
@@ -141,76 +121,82 @@ pipeline {
             }
         }
 
-        stage('Sauvegarde des manifestes K8s') {
+        stage('Push Kubernetes Manifests to Git') {
             environment {
-                // Utiliser des identifiants de type username/password pour GitHub
-                GIT_CREDENTIALS = credentials('github-credentials')
+                // Token d'accès personnel GitHub
+                GITHUB_TOKEN = credentials('github-token')
             }
             steps {
                 script {
                     sh '''
-                    # Nettoyer l'ancien répertoire si présent
-                    rm -rf k8s-repo
-                    
-                    # URL du dépôt avec identifiants
-                    REPO_URL="https://$GIT_CREDENTIALS_USR:$GIT_CREDENTIALS_PSW@github.com/$GITHUB_REPO_OWNER/$GITHUB_REPO_NAME.git"
-                    
-                    # Cloner le dépôt
-                    echo "Clonage du dépôt..."
-                    if git clone $REPO_URL k8s-repo; then
-                        echo "Dépôt cloné avec succès."
-                    else
-                        echo "Échec du clonage. Initialisation d'un nouveau dépôt..."
-                        mkdir -p k8s-repo
-                        cd k8s-repo
-                        git init
-                        git remote add origin $REPO_URL
-                        cd ..
-                    fi
-                    
-                    # Copier les manifestes Kubernetes
-                    echo "Copie des manifestes Kubernetes..."
-                    cp -f k8s/*.yaml k8s-repo/
-                    
-                    # Configurer Git
-                    cd k8s-repo
-                    git config user.email "jenkins@example.com"
-                    git config user.name "Jenkins CI"
-                    
-                    # Détecter la branche par défaut ou utiliser main
-                    if git show-ref --verify --quiet refs/remotes/origin/$GITHUB_BRANCH; then
-                        echo "Utilisation de la branche existante: $GITHUB_BRANCH"
-                        git checkout $GITHUB_BRANCH || git checkout -b $GITHUB_BRANCH
-                    else
-                        echo "Création d'une nouvelle branche: $GITHUB_BRANCH"
-                        git checkout -b $GITHUB_BRANCH
-                    fi
-                    
-                    # Ajouter les fichiers modifiés
-                    echo "Ajout des fichiers modifiés..."
-                    git add .
-                    
-                    # Vérifier s'il y a des modifications à committer
-                    if git diff --staged --quiet; then
-                        echo "Aucun changement détecté, rien à committer."
-                    else
-                        echo "Commit des changements..."
-                        git commit -m "Update kubernetes manifests for version $DOCKER_TAG"
+                        # Nettoyage préalable
+                        rm -rf k8s-repo
                         
-                        # Push des changements
-                        echo "Push des changements vers GitHub..."
-                        if ! git push origin $GITHUB_BRANCH; then
-                            echo "Échec du push, tentative avec une nouvelle branche..."
-                            TIMESTAMP=$(date +%Y%m%d%H%M%S)
-                            NEW_BRANCH="${GITHUB_BRANCH}-${TIMESTAMP}"
-                            git checkout -b $NEW_BRANCH
-                            git push origin $NEW_BRANCH
+                        # URL du dépôt avec le token
+                        REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}.git"
+                        
+                        # Cloner le dépôt
+                        echo "Clonage du dépôt GitHub..."
+                        if git clone "$REPO_URL" k8s-repo; then
+                            echo "Dépôt cloné avec succès."
+                        else
+                            echo "Échec du clonage. Initialisation d'un nouveau dépôt..."
+                            mkdir -p k8s-repo
+                            cd k8s-repo
+                            git init
+                            echo "# Kubernetes manifests pour ${GITHUB_REPO_NAME}" > README.md
+                            git add README.md
+                            git commit -m "Initial commit"
+                            git branch -M main
+                            git remote add origin "$REPO_URL"
+                            cd ..
                         fi
-                    fi
-                    
-                    # Retour au répertoire de travail et nettoyage
-                    cd ..
+                        
+                        # Copier les manifestes Kubernetes
+                        echo "Copie des manifestes Kubernetes..."
+                        cp -f k8s/*.yaml k8s-repo/
+                        
+                        # Configurer Git
+                        cd k8s-repo
+                        git config user.email "jenkins@example.com"
+                        git config user.name "Jenkins CI"
+                        
+                        # S'assurer d'être sur main
+                        git checkout main 2>/dev/null || git checkout -b main
+                        
+                        # Ajouter les fichiers modifiés
+                        echo "Ajout des fichiers modifiés..."
+                        git add .
+                        
+                        # Vérifier s'il y a des modifications
+                        if git diff --staged --quiet; then
+                            echo "Aucun changement détecté, rien à committer."
+                        else
+                            echo "Commit des changements..."
+                            git commit -m "Update kubernetes manifests for version ${DOCKER_TAG}"
+                            
+                            # Push vers GitHub
+                            echo "Push des changements vers GitHub..."
+                            if git push origin main; then
+                                echo "Push réussi!"
+                            else
+                                echo "Échec du push vers main. Création d'une branche alternative..."
+                                BRANCH_NAME="update-k8s-${BUILD_ID}"
+                                git checkout -b "${BRANCH_NAME}"
+                                git push origin "${BRANCH_NAME}"
+                                echo "Changements poussés vers la branche: ${BRANCH_NAME}"
+                            fi
+                        fi
+                        
+                        # Sauvegarde locale (backup)
+                        echo "Création d'une sauvegarde locale..."
+                        cd ..
+                        tar -czf k8s-manifests-${BUILD_ID}.tar.gz k8s-repo/*.yaml
+                        echo "Sauvegarde créée: k8s-manifests-${BUILD_ID}.tar.gz"
                     '''
+                    
+                    // Archiver la sauvegarde locale
+                    archiveArtifacts artifacts: "k8s-manifests-${env.BUILD_ID}.tar.gz", fingerprint: true
                 }
             }
         }
@@ -218,16 +204,15 @@ pipeline {
 
     post {
         always {
-            echo "Nettoyage des ressources..."
             sh 'docker rm -f jenkins || true'
         }
         
         success {
-            echo "Pipeline terminé avec succès !"
+            echo "Pipeline terminé avec succès!"
         }
         
         failure {
-            echo "Le pipeline a échoué. Veuillez vérifier les logs pour plus de détails."
+            echo "Le pipeline a échoué. Veuillez vérifier les logs."
         }
     }
 }
