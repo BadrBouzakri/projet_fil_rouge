@@ -112,35 +112,63 @@ pipeline {
                 script {
                     sh '''
                         # Nettoyer d'abord
-                        rm -rf k8s-repo ~/.ssh/id_rsa
-
-                        # Configure Git SSH
+                        rm -rf k8s-repo
+                        rm -f ~/.ssh/id_rsa ~/.ssh/known_hosts
+                        
+                        # Configure Git SSH avec les bonnes permissions
                         mkdir -p ~/.ssh
-                        echo "$GIT_SSH_KEY" > ~/.ssh/id_rsa
+                        cat "$GIT_SSH_KEY" > ~/.ssh/id_rsa
                         chmod 600 ~/.ssh/id_rsa
-                        ssh-keyscan github.com >> ~/.ssh/known_hosts
+                        ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+                        chmod 644 ~/.ssh/known_hosts
                         
-                        # Test SSH connection
+                        # Test SSH connection avant de continuer
                         ssh -T -o StrictHostKeyChecking=no git@github.com || true
-
-                        # Clone the repository
-                        git clone $GITHUB_REPO_URL k8s-repo || true
-
-                        # Ensure directory exists
-                        mkdir -p k8s-repo
                         
-                        # Copy the updated manifests
-                        cp k8s/*.yaml k8s-repo/
+                        # Clone the repository (avec gestion d'erreur)
+                        git clone $GITHUB_REPO_URL k8s-repo || {
+                            # Si le clone échoue, vérifier que le dépôt existe et est accessible
+                            echo "Erreur lors du clonage. Vérification des branches disponibles..."
+                            git ls-remote --heads $GITHUB_REPO_URL || true
+                            # Créer un répertoire vide comme fallback
+                            mkdir -p k8s-repo
+                            cd k8s-repo
+                            git init
+                            git remote add origin $GITHUB_REPO_URL
+                        }
                         
-                        # Commit and push
+                        # Vérifier la branche par défaut (main ou master)
                         cd k8s-repo
-                        git config --global user.email "jenkins@example.com"
-                        git config --global user.name "Jenkins"
-                        git add .
-                        git commit -m "Update kubernetes manifests for version $DOCKER_TAG" || true
-                        git push origin main
+                        DEFAULT_BRANCH=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5 || echo "main")
+                        echo "La branche par défaut est: $DEFAULT_BRANCH"
                         
-                        # Cleanup
+                        # Fetch pour obtenir la dernière version
+                        git fetch origin || true
+                        
+                        # Checkout de la branche principale si elle existe
+                        git checkout $DEFAULT_BRANCH || git checkout -b $DEFAULT_BRANCH
+                        
+                        # Copier les manifests Kubernetes mis à jour
+                        cp -f ../k8s/*.yaml ./
+                        
+                        # Configurer git
+                        git config --global user.email "bouzakri.badr@gmail.com"
+                        git config --global user.name "BadrBouzakri"
+                        
+                        # Commit et push des changements
+                        git add .
+                        git commit -m "Update kubernetes manifests for version $DOCKER_TAG" || echo "Aucun changement à commit"
+                        
+                        # Pousser vers la branche principale avec détail des erreurs
+                        git push origin $DEFAULT_BRANCH || {
+                            echo "Erreur lors du push. Détails:"
+                            git remote -v
+                            git branch
+                            git status
+                        }
+                        
+                        # Nettoyage sécuritaire
+                        cd ..
                         rm -f ~/.ssh/id_rsa
                     '''
                 }
