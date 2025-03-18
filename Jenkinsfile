@@ -5,6 +5,7 @@ pipeline {
         DOCKER_TAG = "v.${BUILD_ID}.0"
         GITHUB_REPO_OWNER = "BadrBouzakri"
         GITHUB_REPO_NAME = "k8s-projet-prod"
+        K8S_SUBFOLDER = "K8S_Prod"  // Sous-dossier pour les fichiers Kubernetes
     }
     
     agent any 
@@ -152,9 +153,13 @@ pipeline {
                             cd ..
                         fi
                         
-                        # Copier les manifestes Kubernetes
-                        echo "Copie des manifestes Kubernetes..."
-                        cp -f k8s/*.yaml k8s-repo/
+                        # Créer le sous-dossier K8S_Prod s'il n'existe pas
+                        echo "Création du sous-dossier ${K8S_SUBFOLDER}..."
+                        mkdir -p k8s-repo/${K8S_SUBFOLDER}
+                        
+                        # Copier les manifestes Kubernetes dans le sous-dossier
+                        echo "Copie des manifestes Kubernetes dans ${K8S_SUBFOLDER}..."
+                        cp -f k8s/*.yaml k8s-repo/${K8S_SUBFOLDER}/
                         
                         # Configurer Git
                         cd k8s-repo
@@ -173,7 +178,7 @@ pipeline {
                             echo "Aucun changement détecté, rien à committer."
                         else
                             echo "Commit des changements..."
-                            git commit -m "Update kubernetes manifests for version ${DOCKER_TAG}"
+                            git commit -m "Update kubernetes manifests in ${K8S_SUBFOLDER} for version ${DOCKER_TAG}"
                             
                             # Push vers GitHub
                             echo "Push des changements vers GitHub..."
@@ -191,7 +196,7 @@ pipeline {
                         # Sauvegarde locale (backup)
                         echo "Création d'une sauvegarde locale..."
                         cd ..
-                        tar -czf k8s-manifests-${BUILD_ID}.tar.gz k8s-repo/*.yaml
+                        tar -czf k8s-manifests-${BUILD_ID}.tar.gz k8s-repo/${K8S_SUBFOLDER}/*.yaml
                         echo "Sauvegarde créée: k8s-manifests-${BUILD_ID}.tar.gz"
                     '''
                     
