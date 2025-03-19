@@ -163,7 +163,7 @@ pipeline {
                         
                         # Configurer Git
                         cd k8s-repo
-                        git config user.email "jenkins@example.com"
+                        git config user.email "bouzakri.badr@gmail.com"
                         git config user.name "Jenkins CI"
                         
                         # S'assurer d'être sur main
