@@ -82,7 +82,30 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    sed -i "s+image:.*+image: $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG+g" k8s/deployment.yaml
+                    sed -i "s+image:.*+image: $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG+g" k8s/dev/deployment.yaml
+                    sed -i "s+image:.*+image: $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG+g" k8s/staging/deployment.yaml
+                    sed -i "s+image:.*+image: $DOCKER_ID/$DOCKER_IMAGE:$DOCKER_TAG+g" k8s/prod/deployment.yaml
+                    '''
+                }
+            }
+        }
+
+        stage('Create Namespaces') {
+            environment {
+                KUBECONFIG = credentials("config")
+            }
+            steps {
+                script {
+                    sh '''
+                        for ns in dev staging prod; do
+                            if ! kubectl get namespace $ns >/dev/null 2>&1; then
+                                echo "Création du namespace $ns..."
+                                kubectl create namespace $ns
+                                echo "Namespace $ns créé avec succès"
+                            else
+                                echo "Le namespace $ns existe déjà"
+                            fi
+                        done
                     '''
                 }
             }
@@ -95,11 +118,11 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    kubectl apply -f k8s/deployment.yaml -n dev
-                    kubectl apply -f k8s/service.yaml -n dev
-                    kubectl apply -f k8s/pv.yaml -n dev
-                    kubectl apply -f k8s/pvc.yaml -n dev
-                    kubectl apply -f k8s/hpa.yaml -n dev
+                    kubectl apply -f k8s/dev/deployment.yaml -n dev
+                    kubectl apply -f k8s/dev/service.yaml -n dev
+                    kubectl apply -f k8s/dev/pv.yaml -n dev
+                    kubectl apply -f k8s/dev/pvc.yaml -n dev
+                    kubectl apply -f k8s/dev/hpa.yaml -n dev
                     '''
                 }
             }
@@ -112,11 +135,11 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    kubectl apply -f k8s/deployment.yaml -n staging
-                    kubectl apply -f k8s/service.yaml -n staging
-                    kubectl apply -f k8s/pv.yaml -n staging
-                    kubectl apply -f k8s/pvc.yaml -n staging
-                    kubectl apply -f k8s/hpa.yaml -n staging
+                    kubectl apply -f k8s/staging/deployment.yaml -n staging
+                    kubectl apply -f k8s/staging/service.yaml -n staging
+                    kubectl apply -f k8s/staging/pv.yaml -n staging
+                    kubectl apply -f k8s/staging/pvc.yaml -n staging
+                    kubectl apply -f k8s/staging/hpa.yaml -n staging
                     '''
                 }
             }
