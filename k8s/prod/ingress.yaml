@@ -18,7 +18,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: foot-service
+            name: foot-app-service
             port:
               number: 80
   tls:
