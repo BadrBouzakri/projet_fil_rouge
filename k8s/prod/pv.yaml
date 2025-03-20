@@ -2,13 +2,17 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: foot-app-pv
+  labels:
+    argocd.argoproj.io/instance: footselector
 spec:
   capacity:
     storage: 10Gi
   accessModes:
     - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  volumeMode: Filesystem
   local:
-    path: "/data/appsdata/foot"  # Remplacez par un chemin valide sur chaque nœud k3s
+    path: "/data/appsdata/foot"
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -16,4 +20,5 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - "debtest"  # Remplacez par le nom de votre nœud k3s
+          - "ip-10-0-0-68.eu-west-3.compute.internal"
+          - "ip-10-0-1-74.eu-west-3.compute.internal"
