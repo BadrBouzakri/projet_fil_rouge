@@ -180,9 +180,18 @@ pipeline {
                         echo "Création du sous-dossier ${K8S_SUBFOLDER}..."
                         mkdir -p k8s-repo/${K8S_SUBFOLDER}
                         
-                        # Copier les manifestes Kubernetes dans le sous-dossier
+                        # Copier TOUS les manifestes Kubernetes de tous les environnements
                         echo "Copie des manifestes Kubernetes dans ${K8S_SUBFOLDER}..."
-                        cp -f k8s/*.yaml k8s-repo/${K8S_SUBFOLDER}/
+                        
+                        # Créer les sous-dossiers pour chaque environnement
+                        mkdir -p k8s-repo/${K8S_SUBFOLDER}/dev
+                        mkdir -p k8s-repo/${K8S_SUBFOLDER}/staging
+                        mkdir -p k8s-repo/${K8S_SUBFOLDER}/prod
+                        
+                        # Copier les fichiers par environnement
+                        cp -f k8s/dev/*.yaml k8s-repo/${K8S_SUBFOLDER}/dev/ || echo "Aucun fichier dev à copier"
+                        cp -f k8s/staging/*.yaml k8s-repo/${K8S_SUBFOLDER}/staging/ || echo "Aucun fichier staging à copier"
+                        cp -f k8s/prod/*.yaml k8s-repo/${K8S_SUBFOLDER}/prod/ || echo "Aucun fichier prod à copier"
                         
                         # Configurer Git
                         cd k8s-repo
@@ -219,7 +228,7 @@ pipeline {
                         # Sauvegarde locale (backup)
                         echo "Création d'une sauvegarde locale..."
                         cd ..
-                        tar -czf k8s-manifests-${BUILD_ID}.tar.gz k8s-repo/${K8S_SUBFOLDER}/*.yaml
+                        tar -czf k8s-manifests-${BUILD_ID}.tar.gz k8s-repo/${K8S_SUBFOLDER}
                         echo "Sauvegarde créée: k8s-manifests-${BUILD_ID}.tar.gz"
                     '''
                     
