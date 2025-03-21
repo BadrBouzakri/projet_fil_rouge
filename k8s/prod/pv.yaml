@@ -20,5 +20,5 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - "ip-10-0-0-68.eu-west-3.compute.internal"
-          - "ip-10-0-1-74.eu-west-3.compute.internal"
+          - "ip-10-0-1-143.eu-west-3.compute.internal"
+          - "ip-10-0-1-201.eu-west-3.compute.internal"
