@@ -5,7 +5,7 @@
 echo "Nettoyage du namespace prod..."
 
 # 1. Supprimer le HPA
-kubectl delete hpa foot-app-hpa -n prod --ignore-not-found=true
+kubectl get pods -n prod
 
 # 2. Supprimer les pods
 kubectl delete pod --all -n prod --force --grace-period=0
