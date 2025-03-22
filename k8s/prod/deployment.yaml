@@ -23,4 +23,4 @@ spec:
       volumes:
       - name: data-volume
         persistentVolumeClaim:
-          claimName: foot-app-pvc
+          claimName: foot-app-pvc-new
