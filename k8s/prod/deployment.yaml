@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: foot-app
+  namespace: prod
 spec:
   replicas: 1
   selector:
@@ -14,13 +15,20 @@ spec:
     spec:
       containers:
       - name: foot-app
-        image: bouzakri/foot_app 
+        image: bouzakri/foot_app
         ports:
         - containerPort: 5000
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         volumeMounts:
         - mountPath: "/data"
           name: data-volume
       volumes:
       - name: data-volume
         persistentVolumeClaim:
-          claimName: foot-app-pvc-new
+          claimName: foot-app-pvc-ebs
