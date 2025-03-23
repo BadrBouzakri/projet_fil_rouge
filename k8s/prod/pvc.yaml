@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: foot-app-pvc-ebs
+  name: foot-app-pvc-ebs-02
   namespace: prod
   labels:
     app: foot-app
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: ebs-sc
+  storageClassName: ebs-sc-02
   resources:
     requests:
       storage: 10Gi

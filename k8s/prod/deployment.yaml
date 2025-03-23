@@ -31,4 +31,4 @@ spec:
       volumes:
       - name: data-volume
         persistentVolumeClaim:
-          claimName: foot-app-pvc-ebs
+          claimName: foot-app-pvc-ebs-02

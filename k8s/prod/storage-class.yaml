@@ -1,11 +1,11 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ebs-sc
+  name: ebs-sc-02
 provisioner: ebs.csi.aws.com
 volumeBindingMode: WaitForFirstConsumer
 parameters:
   type: gp3
-  encrypted: "true"
+  encrypted: "false"
 reclaimPolicy: Retain
 allowVolumeExpansion: true
