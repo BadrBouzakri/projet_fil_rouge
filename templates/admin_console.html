@@ -133,14 +133,92 @@
 
         <div class="players-list">
             <h2>Joueurs actuels</h2>
-            <ul>
-                {% for player, score in players.items() %}
-                <li>{{ player }} : {{ score }}%</li>
-                {% endfor %}
-            </ul>
+            <div style="margin-bottom: 15px;">
+                <input type="text" id="player-search" onkeyup="filterTable()" placeholder="Rechercher un joueur..." 
+                    style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ccc; margin-bottom: 10px;">
+            </div>
+            
+            <table id="players-table" style="width: 100%; margin-top: 15px; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">Joueur</th>
+                        <th style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Score</th>
+                        <th style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for player, score in players.items() %}
+                    <tr class="player-row">
+                        <td style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">{{ player }}</td>
+                        <td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">
+                            <span class="score-display">{{ score }}%</span>
+                            <div class="edit-form" style="display: none;">
+                                <form method="POST" action="/admin/console" style="display: flex; align-items: center;">
+                                    <input type="hidden" name="edit_player" value="{{ player }}">
+                                    <input type="number" name="edit_score" value="{{ score }}" min="0" max="100" style="width: 60px; padding: 4px; margin-right: 5px;">
+                                    <button type="submit" style="background-color: #28a745; padding: 4px 8px; font-size: 12px; border: none; color: white; border-radius: 3px; cursor: pointer;">OK</button>
+                                </form>
+                            </div>
+                        </td>
+                        <td style="text-align: center; padding: 8px; border-bottom: 1px solid #ddd;">
+                            <div style="display: flex; justify-content: center; gap: 5px;">
+                                <button type="button" onclick="toggleEdit(this)" 
+                                        style="background-color: #17a2b8; padding: 5px 10px; font-size: 12px; border: none; color: white; border-radius: 3px; cursor: pointer;">
+                                    Modifier
+                                </button>
+                                <form method="POST" action="/admin/console" style="margin: 0; display: inline;">
+                                    <input type="hidden" name="delete_player" value="{{ player }}">
+                                    <button type="submit" style="background-color: #dc3545; padding: 5px 10px; font-size: 12px; border: none; color: white; border-radius: 3px; cursor: pointer;">
+                                        Supprimer
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <script>
+                function toggleEdit(button) {
+                    const row = button.closest('tr');
+                    const scoreDisplay = row.querySelector('.score-display');
+                    const editForm = row.querySelector('.edit-form');
+                    
+                    if (scoreDisplay.style.display !== 'none') {
+                        scoreDisplay.style.display = 'none';
+                        editForm.style.display = 'block';
+                    } else {
+                        scoreDisplay.style.display = 'inline';
+                        editForm.style.display = 'none';
+                    }
+                }
+                
+                function filterTable() {
+                    const input = document.getElementById('player-search');
+                    const filter = input.value.toLowerCase();
+                    const rows = document.querySelectorAll('.player-row');
+                    
+                    rows.forEach(row => {
+                        const playerName = row.cells[0].textContent.toLowerCase();
+                        if (playerName.includes(filter)) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                }
+            </script>
         </div>
 
-        <a href="/admin/logout" class="logout-link">Se déconnecter</a>
+        <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+            <a href="/" style="color: #0072ff; text-decoration: none;">Retour à l'accueil</a>
+            <a href="/admin/logout" class="logout-link">Se déconnecter</a>
+        </div>
+        
+        <footer style="margin-top: 20px; font-size: 14px; color: #666; text-align: center;">
+            Application créée par Badr - {{ current_year }}
+        </footer>
     </div>
 </body>
 </html>

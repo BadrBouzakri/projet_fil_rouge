@@ -141,6 +141,37 @@
             li {
                 font-size: 14px;
             }
+            
+            /* Style pour la version imprimée */
+            @media print {
+                body, .container {
+                    background: white !important;
+                    color: black !important;
+                }
+                
+                video, button, form {
+                    display: none !important;
+                }
+                
+                .teams {
+                    display: flex;
+                    flex-direction: row;
+                    gap: 20px;
+                    page-break-inside: avoid;
+                }
+                
+                .team {
+                    border: 1px solid #ddd;
+                    box-shadow: none;
+                }
+                
+                footer {
+                    position: fixed;
+                    bottom: 0;
+                    width: 100%;
+                    text-align: center;
+                }
+            }
         }
 
         /* Animation d'apparition */
@@ -156,6 +187,51 @@
                 transform: translateY(0);
             }
         }
+        
+        /* Style pour les stats des équipes */
+        .team-stats {
+            background-color: rgba(0, 0, 0, 0.1);
+            padding: 8px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .stats-item {
+            text-align: center;
+        }
+        
+        .stats-label {
+            font-size: 0.8em;
+            color: #666;
+        }
+        
+        .stats-value {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #333;
+        }
+        
+        /* Style pour le bouton d'impression */
+        .print-button {
+            background-color: #17a2b8;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .print-button:hover {
+            background-color: #138496;
+        }
 
     </style>
 </head>
@@ -168,10 +244,42 @@
 
     <div class="container">
         <h1>Voici les équipes générées :</h1>
+        
+        <div style="margin-bottom: 20px; padding: 10px; background-color: rgba(255, 255, 255, 0.8); border-radius: 10px; color: #333;">
+            <h3 style="margin-bottom: 10px;">Statistiques des équipes</h3>
+            <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+                <div style="text-align: center; padding: 10px;">
+                    <span style="font-weight: bold;">Méthode utilisée :</span> 
+                    {% if team_method == 'skill' %}
+                        <span>Par compétence</span>
+                    {% elif team_method == 'snake' %}
+                        <span>Serpent</span>
+                    {% elif team_method == 'random' %}
+                        <span>Aléatoire</span>
+                    {% endif %}
+                </div>
+                <div style="text-align: center; padding: 10px;">
+                    <span style="font-weight: bold;">Équilibre :</span> 
+                    <span style="color: {% if balance_percent > 90 %}green{% elif balance_percent > 75 %}orange{% else %}red{% endif %};">
+                        {{ balance_percent }}%
+                    </span>
+                </div>
+            </div>
+        </div>
 
         <div class="teams">
             <div class="team">
                 <h2>Équipe 1</h2>
+                <div class="team-stats">
+                    <div class="stats-item">
+                        <div class="stats-label">Force totale</div>
+                        <div class="stats-value">{{ team1_score }}</div>
+                    </div>
+                    <div class="stats-item">
+                        <div class="stats-label">Moyenne</div>
+                        <div class="stats-value">{{ team1_avg }}%</div>
+                    </div>
+                </div>
                 <ul>
                     {% for player in team1 %}
                     <li>{{ player }}</li>
@@ -180,6 +288,16 @@
             </div>
             <div class="team">
                 <h2>Équipe 2</h2>
+                <div class="team-stats">
+                    <div class="stats-item">
+                        <div class="stats-label">Force totale</div>
+                        <div class="stats-value">{{ team2_score }}</div>
+                    </div>
+                    <div class="stats-item">
+                        <div class="stats-label">Moyenne</div>
+                        <div class="stats-value">{{ team2_avg }}%</div>
+                    </div>
+                </div>
                 <ul>
                     {% for player in team2 %}
                     <li>{{ player }}</li>
@@ -187,10 +305,24 @@
                 </ul>
             </div>
         </div>
-
-        <form action="/" method="GET">
-            <button type="submit">Retour à la sélection</button>
-        </form>
+        
+        <div style="display: flex; gap: 15px; margin-top: 20px; justify-content: center;">
+            <button type="button" onclick="window.print()" class="print-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" style="margin-right: 5px;" viewBox="0 0 16 16">
+                    <path d="M5 1a2 2 0 0 0-2 2v1h10V3a2 2 0 0 0-2-2H5zm6 8H5a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1z"/>
+                    <path d="M0 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2H2a2 2 0 0 1-2-2V7zm2.5 1a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
+                </svg>
+                Imprimer les équipes
+            </button>
+            
+            <form action="/" method="GET">
+                <button type="submit">Retour à la sélection</button>
+            </form>
+        </div>
+        
+        <footer style="margin-top: 20px; font-size: 14px; color: #333; text-align: center;">
+            Application créée par Badr - {{ current_year }}
+        </footer>
     </div>
 </body>
 </html>
