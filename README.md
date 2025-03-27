@@ -1,40 +1,66 @@
-# Application de Gestion d'Équipes - CI/CD avec Jenkins et Kubernetes
+### Application de Gestion d'Équipes de Football - CI/CD avec Jenkins et Kubernetes
 
-**Application créée par Badr**
+**Application créée par Badr Bouzakri**
 
-Cette application permet de générer des équipes équilibrées à partir d'une liste de joueurs. Elle dispose également d'une console d'administration pour ajouter des joueurs et gérer leurs scores.
+Cette application web permet de générer des équipes équilibrées pour les matchs de football (futsal) à partir d'une liste de joueurs avec leurs niveaux respectifs. Elle dispose également d'une console d'administration pour gérer les joueurs et leurs évaluations.
+
 
 ## Table des matières
 
 1. [Fonctionnalités](#fonctionnalités)
-2. [Prérequis](#prérequis)
-3. [Installation locale avec Docker](#installation-locale-avec-docker)
-4. [Installation avec Kubernetes](#installation-avec-kubernetes)
-5. [Pipeline CI/CD avec Jenkins](#pipeline-cicd-avec-jenkins)
-6. [Structure des fichiers](#structure-des-fichiers)
-7. [Accès à l'application](#accès-à-lapplication)
-8. [Contributeurs](#contributeurs)
+2. [Architecture](#architecture)
+3. [Prérequis](#prérequis)
+4. [Installation locale avec Docker](#installation-locale-avec-docker)
+5. [Installation avec Kubernetes](#installation-avec-kubernetes)
+6. [Pipeline CI/CD avec Jenkins](#pipeline-cicd-avec-jenkins)
+7. [Déploiement sur AWS EKS](#déploiement-sur-aws-eks)
+8. [Structure des fichiers](#structure-des-fichiers)
+9. [Accès à l'application](#accès-à-lapplication)
+10. [Guide d'utilisation](#guide-dutilisation)
+11. [Contributeurs](#contributeurs)
 
 ## Fonctionnalités
 
-- Sélectionnez jusqu'à 10 joueurs pour générer des équipes équilibrées.
-- Affichage dynamique des équipes générées.
-- Console d'administration pour ajouter et gérer des joueurs.
-- Authentification pour accéder à la console d'administration.
-- Intégration continue avec Jenkins
-- Déploiement continu sur Kubernetes (environnements dev et staging)
+- **Sélection et équilibrage d'équipes**:
+  - Sélectionnez jusqu'à 10 joueurs pour générer deux équipes équilibrées
+  - Plusieurs algorithmes d'équilibrage : par compétence, par serpent (1-2-2-1), ou aléatoire
+  - Visualisation du pourcentage d'équilibre entre les équipes
+
+- **Administration des joueurs**:
+  - Interface sécurisée par authentification
+  - Ajout, modification et suppression de joueurs
+  - Attribution de scores de compétence (0-100%)
+  - Recherche rapide parmi les joueurs disponibles
+
+- **Interface responsive**:
+  - Compatible mobile et desktop
+  - Animations et transitions visuelles
+
+## Architecture
+
+L'application est construite avec les technologies suivantes:
+- **Backend**: Flask (Python 3.9)
+- **Frontend**: HTML5, CSS3, JavaScript (vanilla)
+- **Base de données**: Stockage des données persistant via volumes Kubernetes
+- **Conteneurisation**: Docker
+- **Orchestration**: Kubernetes
+- **CI/CD**: Jenkins
+
+L'architecture de déploiement comprend:
+- Environnement de développement (dev)
+- Environnement de staging
+- Environnement de production (sur AWS EKS)
 
 ## Prérequis
 
-- **Docker** : Pour exécuter l'application dans un conteneur.
-- **Kubernetes** : Pour le déploiement dans des environnements dev et staging.
-- **Jenkins** : Pour l'intégration continue et le déploiement continu.
-- **kubectl** : Client en ligne de commande pour Kubernetes.
-- **Git** : Pour la gestion du code source.
+- **Docker** : Pour exécuter l'application dans un conteneur
+- **Kubernetes** : Pour le déploiement dans les différents environnements
+- **Jenkins** : Pour l'intégration continue et le déploiement continu
+- **kubectl** : Client en ligne de commande pour Kubernetes
+- **Git** : Pour la gestion du code source
+- **Accès AWS** (facultatif): Pour le déploiement sur AWS EKS
 
 ## Installation locale avec Docker
-
-### Développement local avec Docker Compose
 
 ```bash
 # Cloner le projet
@@ -42,10 +68,9 @@ git clone git@github.com:BadrBouzakri/futsal_team_selector.git
 cd futsal_team_selector
 
 # Démarrer l'application avec Docker Compose
-docker-compose up -d
+docker build -t footselectorimage .
 
-# Voir les logs
-docker-compose logs -f
+docker run -d -p 5000:5000 -name footselector footselectorimage 
 ```
 
 L'application sera accessible à l'adresse http://localhost:5000.
@@ -73,6 +98,7 @@ kubectl apply -f kubernetes/dev/persistent-volume-claim.yaml
 kubectl apply -f kubernetes/dev/configmap.yaml
 kubectl apply -f kubernetes/dev/deployment.yaml
 kubectl apply -f kubernetes/dev/service.yaml
+kubectl apply -f kubernetes/dev/hpa.yaml
 
 # Vérifier le déploiement
 kubectl get all -n futsal-dev
@@ -88,6 +114,7 @@ kubectl apply -f kubernetes/staging/persistent-volume-claim.yaml
 kubectl apply -f kubernetes/staging/configmap.yaml
 kubectl apply -f kubernetes/staging/deployment.yaml
 kubectl apply -f kubernetes/staging/service.yaml
+kubectl apply -f kubernetes/staging/hpa.yaml
 
 # Vérifier le déploiement
 kubectl get all -n futsal-staging
@@ -95,7 +122,13 @@ kubectl get all -n futsal-staging
 
 ## Pipeline CI/CD avec Jenkins
 
-Ce projet utilise Jenkins pour l'intégration continue et le déploiement continu. Le pipeline est défini dans le fichier `Jenkinsfile`.
+Un pipeline d'intégration continue et de déploiement continu est configuré dans le fichier `Jenkinsfile`. Il automatise:
+
+1. **Build** : Construction de l'image Docker
+2. **Test** : Vérification du fonctionnement de l'application
+3. **Push** : Publication de l'image sur Docker Hub
+4. **Deploy** : Déploiement sur les environnements Kubernetes
+5. **Backup** : Sauvegarde des manifestes Kubernetes
 
 ### Configuration de Jenkins
 
@@ -114,32 +147,23 @@ docker run -d -p 8080:8080 -p 50000:50000 --name jenkins \
 docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 ```
 
-3. Accédez à http://localhost:8080 et suivez les instructions pour terminer l'installation.
+3. Configurez les identifiants Jenkins :
+   - Ajoutez votre fichier kubeconfig (ID: `config`)
+   - Configurez les accès Docker Hub (ID: `DOCKER_HUB_PASS`)
 
-4. Installez les plugins suivants :
-   - Docker Pipeline
-   - Kubernetes CLI
-   - Credentials Plugin
+4. Créez un pipeline pointant vers le repository Git.
 
-5. Configurez les identifiants Jenkins :
-   - Ajoutez votre fichier kubeconfig dans Jenkins (ID: `kubeconfig`)
-   - Configurez l'URL de votre registre Docker (ID: `docker-registry`)
+## Déploiement sur AWS EKS
 
-6. Créez un nouveau pipeline dans Jenkins :
-   - Sélectionnez "New Item"
-   - Choisissez "Pipeline"
-   - Dans la configuration, sélectionnez "Pipeline script from SCM"
-   - Spécifiez l'URL de votre dépôt Git et le chemin du Jenkinsfile
+L'application peut être déployée sur un cluster Amazon EKS. Ce déploiement est géré par une infrastructure Terraform séparée disponible dans le repository [badr-project-k8s-iac](https://github.com/BadrBouzakri/badr-project-k8s-iac).
 
-### Exécution du pipeline
+Pour déployer sur l'infrastructure AWS:
 
-Le pipeline Jenkins s'exécutera automatiquement à chaque push sur le dépôt Git. Il comprend :
-1. Checkout du code
-2. Construction de l'image Docker
-3. Tests
-4. Push de l'image vers le registre
-5. Déploiement en environnement dev
-6. Déploiement en environnement staging (avec validation manuelle)
+1. Déployez d'abord l'infrastructure avec Terraform
+2. Configurez les variables d'environnement appropriées
+3. Exécutez le pipeline Jenkins avec les paramètres EKS
+
+Pour plus de détails, voir la section [Déploiement sur AWS EKS](#déploiement-sur-aws-eks).
 
 ## Structure des fichiers
 
@@ -151,7 +175,13 @@ futsal_team_selector/
 ├── Jenkinsfile                  # Configuration du pipeline CI/CD
 ├── kubernetes/                  # Configurations Kubernetes
 │   ├── dev/                     # Environnement de développement
-│   └── staging/                 # Environnement de staging
+│   ├── staging/                 # Environnement de staging
+│   └── prod/                    # Environnement de production
+├── templates/                   # Templates HTML pour l'interface utilisateur
+│   ├── index.html              
+│   ├── teams.html              
+│   ├── admin.html              
+│   └── admin_console.html      
 └── README.md                    # Documentation du projet
 ```
 
@@ -163,11 +193,18 @@ futsal_team_selector/
 
 ### Via Ingress (nom de domaine)
 - **Environnement de développement** : https://dev.foot.badr.cloud
-- **Environnement de staging** : https://foot.badr.cloud
+- **Environnement de production** : https://foot.badr.cloud
 
 ### Administration
-- **Admin** : Ajoutez `/admin` à l'URL (identifiants: admin/admin)
+- **Admin** : Ajoutez `/admin` à l'URL (identifiants par défaut: admin/admin)
+
+## Guide d'utilisation
+
+1. **Page d'accueil** : Sélectionnez 10 joueurs et choisissez une méthode d'équilibrage
+2. **Génération d'équipes** : Cliquez sur "Générer des équipes"
+3. **Visualisation** : Les équipes s'affichent avec leurs statistiques
+4. **Administration** : Accédez à `/admin` et connectez-vous pour gérer les joueurs
 
 ## Contributeurs
 
-- **Badr** - Développeur principal de l'application.
+- **Badr Bouzakri** - Développeur principal
