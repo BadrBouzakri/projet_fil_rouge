@@ -1,4 +1,4 @@
-### Application de Gestion d'Équipes de Football - CI/CD avec Jenkins et Kubernetes
+# Application de Gestion d'Équipes de Foot - CI/CD avec Jenkins et Kubernetes
 
 **Application créée par Badr Bouzakri**
 
