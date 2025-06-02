@@ -1,6 +1,6 @@
 # Application de Gestion d'Équipes de Foot - CI/CD avec Jenkins et Kubernetes
 
-**Application créée par Badr Bouzakri**
+Application créée par Badr Bouzakri**
 
 Cette application web permet de générer des équipes équilibrées pour les matchs de football (futsal) à partir d'une liste de joueurs avec leurs niveaux respectifs. Elle dispose également d'une console d'administration pour gérer les joueurs et leurs évaluations.
 
