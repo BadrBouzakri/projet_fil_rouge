@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: foot-app
-        image: bouzakri/foot_app
+        image: bouzakri/foot_app:v.4.0
         ports:
         - containerPort: 5000
         resources:

@@ -12,7 +12,8 @@ all_players = {
     "Jeremy": 80, "Abdelilah": 65, "Malik": 75, "Abdel": 80,
     "Houcine": 70, "Saber": 80, "Sandra": 65, "Nadir": 80,
     "Jalal": 70, "Younes": 80, "Naim": 70, "Meh": 80, "Mehdi le r": 90,
-    "Vincent": 70, "Kevin": 70, "Saad": 80, "Aziz": 90, "Abdallah": 70
+    "Vincent": 70, "Kevin": 70, "Saad": 80, "Aziz": 90, "Abdallah": 70,
+    "Youssef": 80, "Rachid": 75, "Hicham": 85, "Omar": 90,
 }
 
 # Fonction d'équilibrage des équipes avec plusieurs méthodes
